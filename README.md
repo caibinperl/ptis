@@ -2,16 +2,12 @@
 
 Whole genome sequencing (WGS) has become a powerful and popular approach for detecting transfer-DNA (T-DNA) integration sites in the *Agrobacterium tumefaciens*-mediated T-DNA transformation system in plant genetics and breeding. 
 We present the PTIS pipeline, which detects *Agrobacterium*-mediated T-DNA integration sites in transgenic plants. 
-PTIS offers several improvements compared to similar tools: 
-- PTIS covers the entire analysis process, starting from preprocessing raw reads to outputting integration sites.
-- Specifically, PTIS is packaged as a Docker image, making it easy to install and can be executed on various operating systems with a single command.
-- Additionally, the execution time of PTIS is faster than other pipelines.
 
-PTIS is a user-friendly, fast, Docker-based, end-to-end pipeline for efficiently identifying *Agrobacterium*-mediated T-DNA integration sites in transgenic plants. 
+PTIS is a user-friendly, fast, end-to-end pipeline for efficiently identifying *Agrobacterium*-mediated T-DNA integration sites in transgenic plants. 
 The open-source code is available in the GitHub repository: https://github.com/caibinperl/ptis.git. 
-The Docker image can be accessed publicly from Docker Hub at https://hub.docker.com/r/caibinperl/ptis.
 
 ## Background
+
 In plant genetics and breeding, the *Agrobacterium tumefaciens*-mediated transfer-DNA (T-DNA) transformation system is a powerful tool for generating transgenic plants. 
 T-DNA is a fragment of the *A. tumefaciens* tumor-inducing plasmid, which is flanked by two 24-bp borders (left border and right border). 
 *A. tumefaciens* can deliver the tumor-inducing plasmid and transfer DNA to susceptible plant cells as single-stranded DNA. 
@@ -25,12 +21,9 @@ We have developed a pipeline called PTIS that automates quality control on raw r
 PTIS is an end-to-end pipeline that covers all analysis tasks, enabling it to be initiated from raw reads. 
 PTIS presents results within some TSV files, which display the integration site position, type, read amount, etc. 
 PTIS allows users to inspect informative read alignments using the Integrative Genomics Viewer (IGV). 
-To utilize Docker's methodologies, we offer PTIS as a Docker image, streamlining the installation process by pulling the image and executing it with a single command. 
-This is achieved by attaching the data volumes and running the Docker container. 
 
 ## Implementation
-PTIS is built as a Docker container image and shared through Docker Hub (https://hub.docker.com/r/caibinperl/ptis). 
-The container can run on various operating systems, such as Linux, Mac, and Windows, all supported by the Docker engine. 
+
 The pipeline encompasses a series of essential procedures: conducting quality control on the raw reads, removing adapters, establishing an index for the reference genome, aligning sequences, identifying integration sites, and visualizing the resulting output.
 
 ### Preprocessing
@@ -85,32 +78,30 @@ This integration is supported by multiple split reads.
 The outputs for each sample are stored in tabular-separated value files, “site.tsv” and “site_aln.tsv”, representing integration sites and alignments. 
 Using IGV's features, users can easily view and explore alignment data from indexed BAM files.
 
+## Installation via Conda
 
-## Installation
+This is the recommended way to install PTIS, because Conda enables it to handle software dependencies of the workflow.
+You need to install a [Conda-based Python3 distribution](https://docs.conda.io/projects/conda/en/stable/user-guide/install/index.html). 
 
-### Requirements
-Running the pipeline requires a recent version of the docker client, found on the docker website.
-Follow the instructions to [download and install Docker](https://docs.docker.com/get-docker/).
+PTIS can be installed with all goodies needed to run in any environment via
 
+```sh
+$ conda env create -f environment.yml
+```
+
+This will install PTIS into an isolated software environment, that has to be activated with
+
+```sh
+$ conda activate ptis
+```
 
 ## Usage
 
-The PTIS Docker container includes the complete environment, scripts, and software (along with their respective versions). 
-This eliminates any concerns about compatibility issues when installing bioinformatics tools on a platform different from the one they were developed on. 
-The execution of PTIS depends on the Docker engine, which needs to be installed on the host machine. 
-The installation of Docker on different operating systems is easy and described on the Docker website (https://docs.docker.com/get-docker). 
-With Docker, PTIS can be executed on various operating systems with a simple command: `docker run --mount type=bind,src=data-dir,target=/ptis/data caibinperl/ptis snakemake --cores 4`. 
-The `data-dir` refers to the data directory that contains configuration files, metadata, and raw reads. 
-
-**The `data-dir` required by running PTIS is stored on the host's file system**. 
-
-### Data directory (data-dir)
-A data directory should be presented as the following structure: raw reads, host and vector references, and configure files.
-
-The following will introduce the configuration and sequence of files using the data directory in the code source repository (https://github.com/caibinperl/ptis.git).
+### Data directories
+The data should be presented as the following structure: raw reads, host and vector references, and configure files.
 
 ```sh
-data
+.
 ├── config
 │   ├── config.yml
 │   └── samples.tsv
@@ -156,14 +147,11 @@ Input files must be in FASTQ format, with ".fastq.gz" extensions supported.
     ```
 
 ### Running PTIS
-PTIS is built as a Docker container image and shared through Docker Hub (https://hub.docker.com/repository/docker/caibinperl/ptis/general). 
-The container can run on various operating systems, such as Linux, Mac, and Windows, all supported by the Docker engine. 
 
-Before running the application, specify the parameter and place all the read files in the data directory, as mentioned above. For example, the data directory is `/home/bc/data`.
+Before running the application, specify the parameter and place all the read files in the data directories, as mentioned above.
 
 ```sh
-docker run --mount type=bind,src=/home/bc/data,target=/ptis/data caibinperl/ptis snakemake --cores 4
+$ conda activate ptis
+# The `--cores 4` option is used to set threads.
+$ snakemake --cores 4
 ```
-
-The --mount option tells Docker to create a bind mount, where `/home/bc/data` is the directory on your host machine, and `/ptis/data` would appear inside the container.
-The `--cores 4` option is used to set threads.

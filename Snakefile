@@ -1,27 +1,27 @@
 import os
-import stat
 
 import pandas as pd
 
 
-configfile: "data/config/config.yml"
+configfile: "config/config.yml"
 
 
 def prepare_dir():
-    data_dir = "data"
-    temp_dir = os.path.join(data_dir, "temp")
-    trim_dir = os.path.join(temp_dir, "trim_reads")
-    aln_dir = os.path.join(temp_dir, "aln")
-    load_aln_dir = os.path.join(temp_dir, "load_aln")
-    filter_aln_dir = os.path.join(temp_dir, "filter_aln")
-    filter_fq_dir = os.path.join(temp_dir, "filter_fq")
-    align_vector_dir = os.path.join(temp_dir, "align_vector")
-    load_vector_aln_dir = os.path.join(temp_dir, "load_vector_aln")
-    align_host_dir = os.path.join(temp_dir, "align_host")
-    load_host_aln_dir = os.path.join(temp_dir, "load_host_aln")
-    bam_dir = os.path.join(temp_dir, "bam")
-    result_dir = os.path.join(data_dir, "result")
+    result_dir = os.path.join("results")
+    temp_dir = os.path.join(result_dir,"temp")
+    trim_dir = os.path.join(temp_dir,"trim_reads")
+    aln_dir = os.path.join(temp_dir,"aln")
+    load_aln_dir = os.path.join(temp_dir,"load_aln")
+    filter_aln_dir = os.path.join(temp_dir,"filter_aln")
+    filter_fq_dir = os.path.join(temp_dir,"filter_fq")
+    align_vector_dir = os.path.join(temp_dir,"align_vector")
+    load_vector_aln_dir = os.path.join(temp_dir,"load_vector_aln")
+    align_host_dir = os.path.join(temp_dir,"align_host")
+    load_host_aln_dir = os.path.join(temp_dir,"load_host_aln")
+    bam_dir = os.path.join(temp_dir,"bam")
 
+    if not os.path.exists(result_dir):
+        os.mkdir(result_dir)
     if not os.path.exists(temp_dir):
         os.mkdir(temp_dir)
     if not os.path.exists(trim_dir):
@@ -44,24 +44,19 @@ def prepare_dir():
         os.mkdir(load_host_aln_dir)
     if not os.path.exists(bam_dir):
         os.mkdir(bam_dir)
-    if not os.path.exists(result_dir):
-        os.mkdir(result_dir)
-
-    os.chmod(result_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    os.chmod(temp_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
 
 def get_vector(wildcards):
-    return os.path.join("data/resource", samples["vector"][wildcards.sample])
+    return os.path.join("resources",samples["vector"][wildcards.sample])
 
 
 def get_host(wildcards):
-    return os.path.join("data/resource", samples["host"][wildcards.sample])
+    return os.path.join("resources",samples["host"][wildcards.sample])
 
 
 def index_ref(ref):
     indexed_files = [
-        f"data/resource/{ref}.{ext}" for ext in ["amb", "ann", "bwt", "pac", "sa"]
+        f"resources/{ref}.{ext}" for ext in ["amb", "ann", "bwt", "pac", "sa"]
     ]
     indexed = True
     for index_file in indexed_files:
@@ -70,7 +65,7 @@ def index_ref(ref):
             break
 
     if not indexed:
-        os.system(f"bwa index data/resource/{ref}")
+        os.system(f"bwa index resources/{ref}")
 
 
 def start_on():
@@ -80,27 +75,27 @@ def start_on():
         index_ref(samples["vector"][sample])
 
 
-samples = pd.read_table(os.path.join("data/config", config["samples"])).set_index(
-    "sample", drop=False
+samples = pd.read_table(os.path.join("config",config["samples"])).set_index(
+    "sample",drop=False
 )
 start_on()
 
 
 rule all:
     input:
-        expand("data/result/{sample}_site.tsv", sample=samples.index),
-        expand("data/result/bam/{sample}", sample=samples.index)
+        expand("results/{sample}_site.tsv",sample=samples.index),
+        expand("results/bam/{sample}",sample=samples.index),
 
 
 rule trim_reads:
     input:
-        "data/fastq/{sample}_R1.fastq.gz",
-        "data/fastq/{sample}_R2.fastq.gz",
+        "fastq/{sample}_R1.fastq.gz",
+        "fastq/{sample}_R2.fastq.gz",
     output:
-        "data/temp/trim_reads/{sample}_R1.fastq.gz",
-        "data/temp/trim_reads/{sample}_R2.fastq.gz",
-        "data/temp/trim_reads/{sample}_fastp.html",
-        "data/temp/trim_reads/{sample}_fastp.json",
+        "results/temp/trim_reads/{sample}_R1.fastq.gz",
+        "results/temp/trim_reads/{sample}_R2.fastq.gz",
+        "results/temp/trim_reads/{sample}_fastp.html",
+        "results/temp/trim_reads/{sample}_fastp.json",
     shell:
         "fastp --dont_eval_duplication -i {input[0]} -I {input[1]} -o {output[0]} -O {output[1]} "
         "-h {output[2]} -j {output[3]}"
@@ -109,11 +104,11 @@ rule trim_reads:
 rule align:
     input:
         get_vector,
-        "data/temp/trim_reads/{sample}_R1.fastq.gz",
-        "data/temp/trim_reads/{sample}_R2.fastq.gz",
+        "results/temp/trim_reads/{sample}_R1.fastq.gz",
+        "results/temp/trim_reads/{sample}_R2.fastq.gz",
     output:
-        "data/temp/aln/{sample}_R1.bam",
-        "data/temp/aln/{sample}_R2.bam",
+        "results/temp/aln/{sample}_R1.bam",
+        "results/temp/aln/{sample}_R2.bam",
     threads: config["bwa"]["threads"]
     shell:
         "bwa mem -t {threads} {input[0]} {input[1]} |samtools view -b |"
@@ -124,45 +119,45 @@ rule align:
 
 rule load_aln:
     input:
-        "data/temp/aln/{sample}_R1.bam",
-        "data/temp/aln/{sample}_R2.bam",
+        "results/temp/aln/{sample}_R1.bam",
+        "results/temp/aln/{sample}_R2.bam",
     output:
-        "data/temp/load_aln/{sample}_R1.aln",
-        "data/temp/load_aln/{sample}_R2.aln",
+        "results/temp/load_aln/{sample}_R1.aln",
+        "results/temp/load_aln/{sample}_R2.aln",
     script:
-        "script/load_aln.py"
+        "scripts/load_aln.py"
 
 
 rule filter_aln:
     input:
-        "data/temp/load_aln/{sample}_R1.aln",
-        "data/temp/load_aln/{sample}_R2.aln",
+        "results/temp/load_aln/{sample}_R1.aln",
+        "results/temp/load_aln/{sample}_R2.aln",
     output:
-        "data/temp/filter_aln/{sample}_read_name.ids",
+        "results/temp/filter_aln/{sample}_read_name.ids",
     script:
-        "script/filter_vector_aln.R"
+        "scripts/filter_vector_aln.R"
 
 
 rule filter_fq:
     input:
-        "data/temp/filter_aln/{sample}_read_name.ids",
-        "data/temp/trim_reads/{sample}_R1.fastq.gz",
-        "data/temp/trim_reads/{sample}_R2.fastq.gz",
+        "results/temp/filter_aln/{sample}_read_name.ids",
+        "results/temp/trim_reads/{sample}_R1.fastq.gz",
+        "results/temp/trim_reads/{sample}_R2.fastq.gz",
     output:
-        "data/temp/filter_fq/{sample}_R1.fastq",
-        "data/temp/filter_fq/{sample}_R2.fastq",
+        "results/temp/filter_fq/{sample}_R1.fastq",
+        "results/temp/filter_fq/{sample}_R2.fastq",
     script:
-        "script/filter_fq.py"
+        "scripts/filter_fq.py"
 
 
 rule align_vector:
     input:
         get_vector,
-        "data/temp/filter_fq/{sample}_R1.fastq",
-        "data/temp/filter_fq/{sample}_R2.fastq",
+        "results/temp/filter_fq/{sample}_R1.fastq",
+        "results/temp/filter_fq/{sample}_R2.fastq",
     output:
-        "data/temp/align_vector/{sample}_R1.sam",
-        "data/temp/align_vector/{sample}_R2.sam",
+        "results/temp/align_vector/{sample}_R1.sam",
+        "results/temp/align_vector/{sample}_R2.sam",
     threads: config["bwa"]["threads"]
     shell:
         "bwa mem -t {threads} -o {output[0]} {input[0]} {input[1]} && "
@@ -171,23 +166,23 @@ rule align_vector:
 
 rule load_vector_aln:
     input:
-        "data/temp/align_vector/{sample}_R1.sam",
-        "data/temp/align_vector/{sample}_R2.sam",
+        "results/temp/align_vector/{sample}_R1.sam",
+        "results/temp/align_vector/{sample}_R2.sam",
     output:
-        "data/temp/load_vector_aln/{sample}_R1.aln",
-        "data/temp/load_vector_aln/{sample}_R2.aln",
+        "results/temp/load_vector_aln/{sample}_R1.aln",
+        "results/temp/load_vector_aln/{sample}_R2.aln",
     script:
-        "script/load_aln.py"
+        "scripts/load_aln.py"
 
 
 rule align_host:
     input:
         get_host,
-        "data/temp/filter_fq/{sample}_R1.fastq",
-        "data/temp/filter_fq/{sample}_R2.fastq",
+        "results/temp/filter_fq/{sample}_R1.fastq",
+        "results/temp/filter_fq/{sample}_R2.fastq",
     output:
-        "data/temp/align_host/{sample}_R1.sam",
-        "data/temp/align_host/{sample}_R2.sam",
+        "results/temp/align_host/{sample}_R1.sam",
+        "results/temp/align_host/{sample}_R2.sam",
     threads: config["bwa"]["threads"]
     shell:
         "bwa mem -t {threads} -o {output[0]} {input[0]} {input[1]} && "
@@ -196,45 +191,45 @@ rule align_host:
 
 rule load_host_aln:
     input:
-        "data/temp/align_host/{sample}_R1.sam",
-        "data/temp/align_host/{sample}_R2.sam",
+        "results/temp/align_host/{sample}_R1.sam",
+        "results/temp/align_host/{sample}_R2.sam",
     output:
-        "data/temp/load_host_aln/{sample}_R1.aln",
-        "data/temp/load_host_aln/{sample}_R2.aln",
+        "results/temp/load_host_aln/{sample}_R1.aln",
+        "results/temp/load_host_aln/{sample}_R2.aln",
     script:
-        "script/load_aln.py"
+        "scripts/load_aln.py"
 
 
 rule filter_site_aln:
     input:
-        "data/temp/load_vector_aln/{sample}_R1.aln",
-        "data/temp/load_vector_aln/{sample}_R2.aln",
-        "data/temp/load_host_aln/{sample}_R1.aln",
-        "data/temp/load_host_aln/{sample}_R2.aln",
+        "results/temp/load_vector_aln/{sample}_R1.aln",
+        "results/temp/load_vector_aln/{sample}_R2.aln",
+        "results/temp/load_host_aln/{sample}_R1.aln",
+        "results/temp/load_host_aln/{sample}_R2.aln",
     output:
-        "data/result/{sample}_site_aln.tsv",
+        "results/{sample}_site_aln.tsv",
     script:
-        "script/filter_site_aln.R"
+        "scripts/filter_site_aln.R"
 
 
 rule detect_site:
     input:
-        "data/result/{sample}_site_aln.tsv",
+        "results/{sample}_site_aln.tsv",
     output:
-        "data/result/{sample}_site.tsv",
+        "results/{sample}_site.tsv",
     script:
-        "script/detect_site.py"
+        "scripts/detect_site.py"
 
 
 rule filter_sam:
     input:
-        "data/result/{sample}_site.tsv",
-        "data/result/{sample}_site_aln.tsv",
-        "data/temp/align_vector/{sample}_R1.sam",
-        "data/temp/align_vector/{sample}_R2.sam",
-        "data/temp/align_host/{sample}_R1.sam",
-        "data/temp/align_host/{sample}_R2.sam",
+        "results/{sample}_site.tsv",
+        "results/{sample}_site_aln.tsv",
+        "results/temp/align_vector/{sample}_R1.sam",
+        "results/temp/align_vector/{sample}_R2.sam",
+        "results/temp/align_host/{sample}_R1.sam",
+        "results/temp/align_host/{sample}_R2.sam",
     output:
-        directory("data/result/bam/{sample}"),
+        directory("results/bam/{sample}"),
     script:
-        "script/filter_sam.py"
+        "scripts/filter_sam.py"

@@ -1,8 +1,6 @@
 __pycache__
+
+.idea
 .snakemake
-.vscode
-data/*
-!data/config
-!data/fastq
-!data/resource
-data/resource/*.fasta.*
+
+resources/*.fasta.*
